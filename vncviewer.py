@@ -398,7 +398,7 @@ class Options(usage.Options):
     optParameters = [
         ['bot',         'b', None,              'Path to bot AI file'],
         ['botLog',      'l', 'bot.log',         'Bot log file'],
-        ['replayFile',  'r', None,              'Bot file to replay'],
+        ['botDataFile', 'r', None,              'Data file to give to bot'],
         ['display',     'd', '0',               'VNC display'],
         ['host',        'h', None,              'remote hostname'],
         ['outfile',     'o', None,              'Logfile [default: sys.stdout]'],
@@ -432,7 +432,7 @@ def main():
 
     bot = imp.load_source('bot', o.opts['bot'])
 
-    ai = bot.Ai(o.opts['botLog'], o.opts['replayFile'])
+    ai = bot.Ai(o.opts['botLog'], o.opts['botDataFile'])
 
     logFile = sys.stdout
     if o.opts['outfile']:
