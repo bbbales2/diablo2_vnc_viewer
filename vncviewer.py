@@ -6,6 +6,8 @@ PyGame version
 
 MIT License
 """
+import time
+import imp
 
 #twisted modules
 from twisted.python import usage, log
@@ -128,7 +130,7 @@ class TextSprite(pygame.sprite.Sprite):
 class PyGameApp:
     """Pygame main application"""
     
-    def __init__(self):
+    def __init__(self, ai):
         width, height = 640, 480
         self.setRFBSize(width, height)
         pygame.display.set_caption('Python VNC Viewer')
@@ -142,6 +144,7 @@ class PyGameApp:
         self.sprites.add(self.statustext)
         self.buttons = 0
         self.protocol = None
+        self.ai = ai
         
     def setRFBSize(self, width, height, depth=32):
         """change screen size"""
@@ -152,15 +155,7 @@ class PyGameApp:
             self.screen = pygame.display.set_mode(self.area.size, winstyle, 32)
         elif depth == 8:
             self.screen = pygame.display.set_mode(self.area.size, winstyle, 8)
-            #default palette is perfect ;-)
-            #~ pygame.display.set_palette([(x,x,x) for x in range(256)])
-        #~ elif depth is None:
-            #~ bestdepth = pygame.display.mode_ok((width, height), winstyle, 32)
-            #~ print "bestdepth %r" % bestdepth
-            #~ self.screen = pygame.display.set_mode(self.area.size, winstyle, best)
-            #then communicate that to the protocol...
         else:
-            #~ self.screen = pygame.display.set_mode(self.area.size, winstyle, depth)
             raise ValueError, "color depth not supported"
         self.background = pygame.Surface((self.width, self.height), depth)
         self.background.fill(0) #black
@@ -174,6 +169,9 @@ class PyGameApp:
         seen_events = 0
         for e in pygame.event.get():
             seen_events = 1
+            if hasattr(self.ai, 'handle'):
+                self.ai.handle(e)
+            
             #~ print e
             if e.type == QUIT:
                 self.alive = 0
@@ -225,14 +223,24 @@ class PyGameApp:
         #~ self.clock.tick()
         no_work = self.checkEvents()
 
-        #~ self.sprites.clear(self.screen, self.background)
-        #~ dirty = self.sprites.draw(self.screen)
-        #~ pygame.display.update(dirty)
+        self.sprites.clear(self.screen, self.background)
+        dirty = self.sprites.draw(self.screen)
+        pygame.display.update(dirty)
         
-        #~ self.statustext.update("iteration %d" % self.loopcounter)
-        #~ self.loopcounter += 1
+        self.statustext.update("iteration %d" % self.loopcounter)
+        self.loopcounter += 1
         
-        #~ pygame.display.flip()
+        pygame.display.flip()
+        
+        #print pygame.surfarray.array3d(self.screen).shape
+        if hasattr(self.ai, 'go'):
+            click, x, y = self.ai.go()
+
+            if click:
+                clickType = 1 if click == 1 else 4
+                self.protocol.pointerEvent(x, y, clickType)
+                time.sleep(0.005)
+                self.protocol.pointerEvent(x, y, 0)
         
         if self.alive:
             #~ d = defer.Deferred()
@@ -388,6 +396,9 @@ class VNCFactory(rfb.RFBFactory):
 
 class Options(usage.Options):
     optParameters = [
+        ['bot',         'b', None,              'Path to bot AI file'],
+        ['botLog',      'l', 'bot.log',         'Bot log file'],
+        ['replayFile',  'r', None,              'Bot file to replay'],
         ['display',     'd', '0',               'VNC display'],
         ['host',        'h', None,              'remote hostname'],
         ['outfile',     'o', None,              'Logfile [default: sys.stdout]'],
@@ -419,13 +430,17 @@ def main():
 
     depth = int(o.opts['depth'])
 
+    bot = imp.load_source('bot', o.opts['bot'])
+
+    ai = bot.Ai(o.opts['botLog'], o.opts['replayFile'])
+
     logFile = sys.stdout
     if o.opts['outfile']:
         logFile = o.opts['outfile']
     log.startLogging(logFile)
     
     pygame.init()
-    remoteframebuffer = PyGameApp()
+    remoteframebuffer = PyGameApp(ai)
     
     #~ from twisted.python import threadable
     #~ threadable.init()

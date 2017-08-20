@@ -1,3 +1,9 @@
+I copied this Github repo from https://github.com/techtonik/python-vnc-viewer
+
+That guy cites: http://homepage.hispeed.ch/py430/python/ as the original source
+
+I modified it to do some botting for me, but the changes are very small. All quality work is courtesy them :D. The rest of the readme is as it was.
+
 Simple VNC viewer that is built with
 [Twisted-Python](https://twistedmatrix.com/trac/) and
 [PyGame](http://www.pygame.org/). Originally written by
