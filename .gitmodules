@@ -1,0 +1,3 @@
+[submodule "diablo2_memory_read"]
+	path = diablo2_memory_read
+	url = https://github.com/bbbales2/diablo2_memory_read.git
