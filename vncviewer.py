@@ -196,7 +196,7 @@ class PyGameApp:
         seen_events = 0
         for e in pygame.event.get():
             seen_events = 1
-            if hasattr(self.ai, 'handle'):
+            if self.ai is not None and hasattr(self.ai, 'handle'):
                 self.ai.handle(e, self.getState())
             
             #~ print e
@@ -259,9 +259,9 @@ class PyGameApp:
             self.loopcounter += 1
         
             pygame.display.flip()
-        
-        #print pygame.surfarray.array3d(self.screen).shape
-        if hasattr(self.ai, 'go'):
+
+            #print pygame.surfarray.array3d(self.screen).shape
+        if self.ai is not None and hasattr(self.ai, 'go'):
             click, x, y = self.ai.go(self.getState())
 
             if click:
@@ -463,9 +463,12 @@ def main():
 
     depth = int(o.opts['depth'])
 
-    bot = imp.load_source('bot', o.opts['bot'])
+    if o.opts['bot'] is not None and o.opts['bot'].strip() != '':
+        bot = imp.load_source('bot', o.opts['bot'])
 
-    ai = bot.Ai(o.opts['botLog'], o.opts['botDataFile'])
+        ai = bot.Ai(o.opts['botLog'], o.opts['botDataFile'])
+    else:
+        ai = None
 
     logFile = sys.stdout
     if o.opts['outfile']:
