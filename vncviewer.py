@@ -147,7 +147,7 @@ class PyGameApp:
         self.buttons = 0
         self.protocol = None
         self.ai = ai
-        self.ai = pid
+        self.pid = pid
         
     def setRFBSize(self, width, height, depth=32):
         """change screen size"""
@@ -167,13 +167,24 @@ class PyGameApp:
         """attach a protocol instance to post the events to"""
         self.protocol = protocol
 
+    def getState(self):
+        stdout, _ = subprocess.Popen('diablo2_vnc_viewer/diablo2_memory_read/a.out {0}'.format(self.pid).split(), stdout = subprocess.PIPE, stderr = subprocess.PIPE).communicate()
+        try:
+            state = json.loads(stdout)
+        except:
+            state = None
+            print "Failed to read state: ", stdout
+            pass
+
+        return state
+        
     def checkEvents(self):
         """process events from the queue"""
         seen_events = 0
         for e in pygame.event.get():
             seen_events = 1
             if hasattr(self.ai, 'handle'):
-                self.ai.handle(e)
+                self.ai.handle(e, self.getState())
             
             #~ print e
             if e.type == QUIT:
@@ -237,8 +248,7 @@ class PyGameApp:
         
         #print pygame.surfarray.array3d(self.screen).shape
         if hasattr(self.ai, 'go'):
-            stdout, _ = subprocess.Popen('diablo2_memory_read/a.out {0}'.format(self.pid).split(), stdout = subprocess.PIPE, stderr = subprocess.PIPE).communicate()
-            click, x, y = self.ai.go(json.loads(stdout))
+            click, x, y = self.ai.go(self.getState())
 
             if click:
                 clickType = 1 if click == 1 else 4
@@ -403,7 +413,7 @@ class Options(usage.Options):
         ['bot',         'b', None,              'Path to bot AI file'],
         ['botLog',      'l', 'bot.log',         'Bot log file'],
         ['botDataFile', 'r', None,              'Data file to give to bot'],
-        ['pid',         'i', None,              'pid of Game.exe (Diablo process)'],
+        ['gamePid',     'g', '-1' ,              'pid of Game.exe (Diablo process)'],
         ['display',     'd', '0',               'VNC display'],
         ['host',        'h', None,              'remote hostname'],
         ['outfile',     'o', None,              'Logfile [default: sys.stdout]'],
@@ -445,7 +455,7 @@ def main():
     log.startLogging(logFile)
     
     pygame.init()
-    remoteframebuffer = PyGameApp(ai, o.opts['pid'])
+    remoteframebuffer = PyGameApp(ai, o.opts['gamePid'])
     
     #~ from twisted.python import threadable
     #~ threadable.init()
