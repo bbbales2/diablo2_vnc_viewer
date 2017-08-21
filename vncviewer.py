@@ -127,30 +127,43 @@ class TextSprite(pygame.sprite.Sprite):
             self.lastscore = msg
             self.image = self.font.render(msg, 0, (255,255,255))
 
+class Stub(object):
+    def __init__(self):
+        pass
+
+    def blit(self, a, b):
+        pass
 
 #~ class PyGameApp(pb.Referenceable, Game.Game):
 class PyGameApp:
     """Pygame main application"""
     
-    def __init__(self, ai, pid):
+    def __init__(self, ai, pid, headless):
         width, height = 640, 480
+        self.ai = ai
+        self.pid = pid
+        self.headless = headless
         self.setRFBSize(width, height)
-        pygame.display.set_caption('Python VNC Viewer')
-        pygame.mouse.set_cursor(*POINTER)
-        pygame.key.set_repeat(500, 30)
+        if not self.headless:
+            pygame.display.set_caption('Python VNC Viewer')
+            pygame.mouse.set_cursor(*POINTER)
+            pygame.key.set_repeat(500, 30)
+            self.sprites = pygame.sprite.RenderUpdates()
+            self.statustext = TextSprite((5, 0))
+            self.sprites.add(self.statustext)
+
         self.clock = pygame.time.Clock()
         self.alive = 1
         self.loopcounter = 0
-        self.sprites = pygame.sprite.RenderUpdates()
-        self.statustext = TextSprite((5, 0))
-        self.sprites.add(self.statustext)
         self.buttons = 0
         self.protocol = None
-        self.ai = ai
-        self.pid = pid
         
     def setRFBSize(self, width, height, depth=32):
         """change screen size"""
+        if self.headless:
+            self.screen = Stub()
+            return
+        
         self.width, self.height = width, height
         self.area = Rect(0, 0, width, height)
         winstyle = 0  # |FULLSCREEN
@@ -237,14 +250,15 @@ class PyGameApp:
         #~ self.clock.tick()
         no_work = self.checkEvents()
 
-        self.sprites.clear(self.screen, self.background)
-        dirty = self.sprites.draw(self.screen)
-        pygame.display.update(dirty)
+        if not self.headless:
+            self.sprites.clear(self.screen, self.background)
+            dirty = self.sprites.draw(self.screen)
+            pygame.display.update(dirty)
+            
+            self.statustext.update("iteration %d" % self.loopcounter)
+            self.loopcounter += 1
         
-        self.statustext.update("iteration %d" % self.loopcounter)
-        self.loopcounter += 1
-        
-        pygame.display.flip()
+            pygame.display.flip()
         
         #print pygame.surfarray.array3d(self.screen).shape
         if hasattr(self.ai, 'go'):
@@ -307,8 +321,11 @@ class RFBToGUI(rfb.RFBClient):
     def commitUpdate(self, rectangles = None):
         """finish series of display updates"""
         #~ log.msg("screen unlock")
-        pygame.display.update(rectangles)
-        self.framebufferUpdateRequest(incremental=1)
+        try:
+            pygame.display.update(rectangles)
+            self.framebufferUpdateRequest(incremental=1)
+        except:
+            pass
 
     def updateRectangle(self, x, y, width, height, data):
         """new bitmap data"""
@@ -413,7 +430,8 @@ class Options(usage.Options):
         ['bot',         'b', None,              'Path to bot AI file'],
         ['botLog',      'l', 'bot.log',         'Bot log file'],
         ['botDataFile', 'r', None,              'Data file to give to bot'],
-        ['gamePid',     'g', '-1' ,              'pid of Game.exe (Diablo process)'],
+        ['gamePid',     'g', '-1' ,             'pid of Game.exe (Diablo process)'],
+        ['headless',    'e', '0',               'Set to 1 to run in headless mode'],
         ['display',     'd', '0',               'VNC display'],
         ['host',        'h', None,              'remote hostname'],
         ['outfile',     'o', None,              'Logfile [default: sys.stdout]'],
@@ -455,7 +473,7 @@ def main():
     log.startLogging(logFile)
     
     pygame.init()
-    remoteframebuffer = PyGameApp(ai, o.opts['gamePid'])
+    remoteframebuffer = PyGameApp(ai, o.opts['gamePid'], o.opts['headless'] == '1')
     
     #~ from twisted.python import threadable
     #~ threadable.init()
@@ -463,16 +481,6 @@ def main():
 
     host = o.opts['host']
     display = int(o.opts['display'])
-    if host is None:
-        screen = pygame.display.set_mode((220,40))
-        screen.fill((0,100,255)) #blue bg
-        host = inputbox.ask(screen, "Host")
-        if host == '':
-            raise SystemExit
-        if ':' in host:
-            host, display = host.split(':')
-            if host == '':  host = 'localhost'
-            display = int(display)
 
     # connect to this host and port, and reconnect if we get disconnected
     reactor.connectTCP(
