@@ -8,6 +8,8 @@ MIT License
 """
 import time
 import imp
+import subprocess
+import json
 
 #twisted modules
 from twisted.python import usage, log
@@ -130,7 +132,7 @@ class TextSprite(pygame.sprite.Sprite):
 class PyGameApp:
     """Pygame main application"""
     
-    def __init__(self, ai):
+    def __init__(self, ai, pid):
         width, height = 640, 480
         self.setRFBSize(width, height)
         pygame.display.set_caption('Python VNC Viewer')
@@ -145,6 +147,7 @@ class PyGameApp:
         self.buttons = 0
         self.protocol = None
         self.ai = ai
+        self.ai = pid
         
     def setRFBSize(self, width, height, depth=32):
         """change screen size"""
@@ -234,7 +237,8 @@ class PyGameApp:
         
         #print pygame.surfarray.array3d(self.screen).shape
         if hasattr(self.ai, 'go'):
-            click, x, y = self.ai.go()
+            stdout, _ = subprocess.Popen('diablo2_memory_read/a.out {0}'.format(self.pid).split(), stdout = subprocess.PIPE, stderr = subprocess.PIPE).communicate()
+            click, x, y = self.ai.go(json.loads(stdout))
 
             if click:
                 clickType = 1 if click == 1 else 4
@@ -399,6 +403,7 @@ class Options(usage.Options):
         ['bot',         'b', None,              'Path to bot AI file'],
         ['botLog',      'l', 'bot.log',         'Bot log file'],
         ['botDataFile', 'r', None,              'Data file to give to bot'],
+        ['pid',         'i', None,              'pid of Game.exe (Diablo process)'],
         ['display',     'd', '0',               'VNC display'],
         ['host',        'h', None,              'remote hostname'],
         ['outfile',     'o', None,              'Logfile [default: sys.stdout]'],
@@ -440,7 +445,7 @@ def main():
     log.startLogging(logFile)
     
     pygame.init()
-    remoteframebuffer = PyGameApp(ai)
+    remoteframebuffer = PyGameApp(ai, o.opts['pid'])
     
     #~ from twisted.python import threadable
     #~ threadable.init()
