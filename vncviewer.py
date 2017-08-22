@@ -10,6 +10,7 @@ import time
 import imp
 import subprocess
 import json
+import os
 
 #twisted modules
 from twisted.python import usage, log
@@ -266,8 +267,12 @@ class PyGameApp:
 
             if click:
                 clickType = 1 if click == 1 else 4
+                #self.protocol.keyEvent(rfb.KEY_Escape)
+                #time.sleep(0.001)
+                #self.protocol.keyEvent(rfb.KEY_Escape, down = 0)
+                #time.sleep(0.001)
                 self.protocol.pointerEvent(x, y, clickType)
-                time.sleep(0.005)
+                time.sleep(0.001)
                 self.protocol.pointerEvent(x, y, 0)
         
         if self.alive:
@@ -464,6 +469,9 @@ def main():
     depth = int(o.opts['depth'])
 
     if o.opts['bot'] is not None and o.opts['bot'].strip() != '':
+        #logPath = os.path.join(os.getcwd(), )
+        #os.chdir(os.path.dirname(o.opts['bot']))
+        sys.path.append(os.path.dirname(o.opts['bot']))
         bot = imp.load_source('bot', o.opts['bot'])
 
         ai = bot.Ai(o.opts['botLog'], o.opts['botDataFile'])
