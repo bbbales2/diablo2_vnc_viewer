@@ -11,6 +11,8 @@ import imp
 import subprocess
 import json
 import os
+from keras.models import Model
+from keras.layers import Dense, Activation, Input, pooling
 
 #twisted modules
 from twisted.python import usage, log
@@ -153,6 +155,10 @@ class PyGameApp:
             self.statustext = TextSprite((5, 0))
             self.sprites.add(self.statustext)
 
+        inputs = Input(shape = (640, 400, 3))
+        pool = pooling.AveragePooling2D(pool_size = (16, 16))(inputs)
+        self.model = Model(inputs = inputs, outputs = pool)
+    
         self.clock = pygame.time.Clock()
         self.alive = 1
         self.loopcounter = 0
@@ -182,13 +188,21 @@ class PyGameApp:
         self.protocol = protocol
 
     def getState(self):
-        stdout, _ = subprocess.Popen('diablo2_vnc_viewer/diablo2_memory_read/a.out {0}'.format(self.pid).split(), stdout = subprocess.PIPE, stderr = subprocess.PIPE).communicate()
+        handle = subprocess.Popen('diablo2_vnc_viewer/diablo2_memory_read/a.out {0}'.format(self.pid).split(), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        screen = pygame.surfarray.array3d(self.screen)
+
+        stdout, _ = handle.communicate()
         try:
             state = json.loads(stdout)
         except:
             state = None
             print "Failed to read state: ", stdout
             pass
+
+        if state is not None:
+            im = screen[5:645, 21:421, :].swapaxes(0, 1)
+            state['screen'] = im#self.model.predict()
+            #.reshape((1, 640, 400, 3)))
 
         return state
         
@@ -197,13 +211,16 @@ class PyGameApp:
         seen_events = 0
         for e in pygame.event.get():
             seen_events = 1
-            if self.ai is not None and hasattr(self.ai, 'handle'):
-                self.ai.handle(e, self.getState())
             
             #~ print e
             if e.type == QUIT:
                 self.alive = 0
                 reactor.stop()
+
+            if e.type == MOUSEBUTTONUP and \
+               self.ai is not None and \
+               hasattr(self.ai, 'handle'):
+                self.ai.handle(e, self.getState())
             #~ elif e.type == KEYUP and e.key == K_ESCAPE:
                 #~ self.alive = 0
                 #~ reactor.stop()
@@ -261,7 +278,6 @@ class PyGameApp:
         
             pygame.display.flip()
 
-            #print pygame.surfarray.array3d(self.screen).shape
         if self.ai is not None and hasattr(self.ai, 'go'):
             click, x, y = self.ai.go(self.getState())
 
@@ -279,7 +295,7 @@ class PyGameApp:
             #~ d = defer.Deferred()
             #~ d.addCallback(self.mainloop)
             #~ d.callback(None)
-            reactor.callLater(no_work and 0.020, self.mainloop)
+            reactor.callLater(0.020, self.mainloop)
     
     #~ def error(self):
         #~ log.msg('error, stopping reactor')
