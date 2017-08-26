@@ -290,7 +290,8 @@ class PyGameApp:
                 self.protocol.pointerEvent(x, y, clickType)
                 time.sleep(0.001)
                 self.protocol.pointerEvent(x, y, 0)
-        
+                time.sleep(0.001)
+                self.protocol.pointerEvent(0, 0, 0)
         if self.alive:
             #~ d = defer.Deferred()
             #~ d.addCallback(self.mainloop)
