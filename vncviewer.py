@@ -154,9 +154,6 @@ class PyGameApp:
             self.statustext = TextSprite((5, 0))
             self.sprites.add(self.statustext)
 
-        inputs = Input(shape = (640, 400, 3))
-        pool = pooling.AveragePooling2D(pool_size = (16, 16))(inputs)
-        self.model = Model(inputs = inputs, outputs = pool)
         self.clickQ = []
         self.lastClick = 0.0
     
@@ -202,8 +199,7 @@ class PyGameApp:
 
         if state is not None:
             im = screen[5:645, 21:421, :].swapaxes(0, 1)
-            state['screen'] = im#self.model.predict()
-            #.reshape((1, 640, 400, 3)))
+            state['screen'] = im
 
         return state
         
