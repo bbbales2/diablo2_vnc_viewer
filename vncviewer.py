@@ -11,8 +11,7 @@ import imp
 import subprocess
 import json
 import os
-from keras.models import Model
-from keras.layers import Dense, Activation, Input, pooling
+import numpy
 
 #twisted modules
 from twisted.python import usage, log
@@ -158,6 +157,8 @@ class PyGameApp:
         inputs = Input(shape = (640, 400, 3))
         pool = pooling.AveragePooling2D(pool_size = (16, 16))(inputs)
         self.model = Model(inputs = inputs, outputs = pool)
+        self.clickQ = []
+        self.lastClick = 0.0
     
         self.clock = pygame.time.Clock()
         self.alive = 1
@@ -226,6 +227,29 @@ class PyGameApp:
                 #~ reactor.stop()
             if self.protocol is not None:
                 if e.type == KEYDOWN:
+                    F2Angle = {
+                        K_F1 : 0.0,
+                        K_F2 : 45.0,
+                        K_F3 : 90.0,
+                        K_F4 : 135.0,
+                        K_F5 : 180.0,
+                        K_F6 : 225.0,
+                        K_F7 : 270.0,
+                        K_F8 : 315.0
+                    }
+                    r = 40.0
+                    if e.key in F2Angle:
+                        angle = F2Angle[e.key] * numpy.pi / 180.0
+
+                        x = 325 + numpy.cos(angle) * r
+                        y = 245 - numpy.sin(angle) * r
+
+                        self.lastClick = time.time()
+                        self.protocol.pointerEvent(x, y, 0)
+                        self.clickQ.append((0.020, (x, y, 1)))
+                        self.clickQ.append((0.020, (x, y, 0)))
+                        self.clickQ.append((0.020, (10, 470, 0)))
+
                     if e.key in MODIFIERS:
                         self.protocol.keyEvent(MODIFIERS[e.key], down=1)
                     elif e.key in KEYMAPPINGS:
@@ -268,6 +292,11 @@ class PyGameApp:
         #~ self.clock.tick()
         no_work = self.checkEvents()
 
+        if len(self.clickQ) > 0:
+            if time.time() - self.lastClick > self.clickQ[0][0]:
+                self.protocol.pointerEvent(*self.clickQ.pop(0)[1])
+                self.lastClick = time.time()
+
         if not self.headless:
             self.sprites.clear(self.screen, self.background)
             dirty = self.sprites.draw(self.screen)
@@ -283,15 +312,12 @@ class PyGameApp:
 
             if click:
                 clickType = 1 if click == 1 else 4
-                #self.protocol.keyEvent(rfb.KEY_Escape)
-                #time.sleep(0.001)
-                #self.protocol.keyEvent(rfb.KEY_Escape, down = 0)
-                #time.sleep(0.001)
-                self.protocol.pointerEvent(x, y, clickType)
-                time.sleep(0.001)
+
+                self.lastClick = time.time()
                 self.protocol.pointerEvent(x, y, 0)
-                time.sleep(0.001)
-                self.protocol.pointerEvent(0, 0, 0)
+                self.clickQ.append((0.020, (x, y, clickType)))
+                self.clickQ.append((0.020, (x, y, 0)))
+                self.clickQ.append((0.020, (10, 470, 0)))
         if self.alive:
             #~ d = defer.Deferred()
             #~ d.addCallback(self.mainloop)
