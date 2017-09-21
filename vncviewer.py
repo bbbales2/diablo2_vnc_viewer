@@ -156,6 +156,7 @@ class PyGameApp:
 
         self.clickQ = []
         self.lastClick = 0.0
+        self.lastAiCall = 0.0
     
         self.clock = pygame.time.Clock()
         self.alive = 1
@@ -234,17 +235,17 @@ class PyGameApp:
                         K_F8 : 315.0
                     }
                     r = 40.0
-                    if e.key in F2Angle:
-                        angle = F2Angle[e.key] * numpy.pi / 180.0
+                    #if e.key in F2Angle:
+                    #    angle = F2Angle[e.key] * numpy.pi / 180.0
 
-                        x = 325 + numpy.cos(angle) * r
-                        y = 245 - numpy.sin(angle) * r
+                    #    x = 325 + numpy.cos(angle) * r
+                    #    y = 245 - numpy.sin(angle) * r
 
-                        self.lastClick = time.time()
-                        self.protocol.pointerEvent(x, y, 0)
-                        self.clickQ.append((0.020, (x, y, 1)))
-                        self.clickQ.append((0.020, (x, y, 0)))
-                        self.clickQ.append((0.020, (10, 470, 0)))
+                    #    self.lastClick = time.time()
+                    #    self.protocol.pointerEvent(x, y, 0)
+                    #    self.clickQ.append((0.020, (x, y, 1)))
+                    #    self.clickQ.append((0.020, (x, y, 0)))
+                    #    self.clickQ.append((0.020, (10, 470, 0)))
 
                     if e.key in MODIFIERS:
                         self.protocol.keyEvent(MODIFIERS[e.key], down=1)
@@ -303,10 +304,12 @@ class PyGameApp:
         
             pygame.display.flip()
 
-        if self.ai is not None and hasattr(self.ai, 'go'):
-            click, x, y = self.ai.go(self.getState())
+        if self.ai is not None and \
+           hasattr(self.ai, 'go') and \
+           time.time() - self.lastAiCall > 0.1:
+            click, x, y = self.ai.go(self.getState(), self.screen)
 
-            if click:
+            if click in [1, 2]:
                 clickType = 1 if click == 1 else 4
 
                 self.lastClick = time.time()
@@ -314,6 +317,10 @@ class PyGameApp:
                 self.clickQ.append((0.020, (x, y, clickType)))
                 self.clickQ.append((0.020, (x, y, 0)))
                 self.clickQ.append((0.020, (10, 470, 0)))
+            elif click == 49:
+                self.protocol.keyEvent(49)
+
+            self.lastAiCall = time.time()
         if self.alive:
             #~ d = defer.Deferred()
             #~ d.addCallback(self.mainloop)
